@@ -6,44 +6,36 @@ from datetime import datetime,timedelta
 import warnings
 warnings.filterwarnings('ignore')
 
-# Pair selection
 PAIR_1 = 'AAPL' 
 PAIR_2 = 'MSFT' 
 
 
-
-# 🎯 Strategy Parameters
+# trading parameters
 LOOKBACK_PERIOD = 60  # Days for calculating mean and std
 Z_SCORE_ENTRY = 2.0   # Entry threshold (z-score > 2 or < -2)
 Z_SCORE_EXIT = 0.5    # Exit threshold (z-score < 0.5)
 
-# 🔄 Data Fetching Function
-# 🔄 Data Fetching Function (Fixed Version)
 def fetch_pair_data(pair1, pair2, period='6mo'):
     """
     Fetch historical data for both stocks using yf.Ticker()
     """
     print(f"📥 Fetching data for {pair1} and {pair2}...")
     
-    # ✅ yf.Ticker() use karna zyada reliable hai
     stock1 = yf.Ticker(pair1).history(period=period)
     stock2 = yf.Ticker(pair2).history(period=period)
     
-    # Check karein ki data aaya hai ya nahi
     if stock1.empty or stock2.empty:
-        print(f"❌ Error: No data fetched for one or both stocks!")
+        print(f" Error: No data fetched for one or both stocks!")
         print(f"   Stock1 rows: {len(stock1)}, Stock2 rows: {len(stock2)}")
         raise ValueError("Could not fetch data. Check stock symbols.")
     
-    # Only keep 'Close' prices as Series
     close1 = stock1['Close'].squeeze()  # .squeeze() ensures it's a Series
     close2 = stock2['Close'].squeeze()
     
-    # Debug: Check data types
+    # Check data types
     print(f"   Stock1 data points: {len(close1)}")
     print(f"   Stock2 data points: {len(close2)}")
     
-    # Align dates (only common dates)
     df = pd.DataFrame({
         'Stock1': close1,
         'Stock2': close2
@@ -52,14 +44,10 @@ def fetch_pair_data(pair1, pair2, period='6mo'):
     if df.empty:
         raise ValueError("No overlapping dates found between the two stocks!")
     
-    print(f"✅ Data fetched: {len(df)} trading days")
+    print(f" Data fetched: {len(df)} trading days")
     return df
 
-# 📊 Calculate Spread and Z-Score
 def calculate_spread_and_zscore(df, lookback=60):
-    """
-    Calculate price ratio, spread, and z-score
-    """
     print("📊 Calculating spread and z-score...")
     
     # Method 1: Price Ratio (Stock1 / Stock2)
@@ -69,7 +57,7 @@ def calculate_spread_and_zscore(df, lookback=60):
     # You can also use: df['Spread'] = df['Stock1'] - (hedge_ratio * df['Stock2'])
     
     # Calculate Z-Score of the ratio
-    # Z-score = (Current Value - Mean) / Standard Deviation
+    # Z-score = (Current Value - Mean) / Standard Deviation # i don't remember this so i wrote it
     rolling_mean = df['Price_Ratio'].rolling(window=lookback).mean()
     rolling_std = df['Price_Ratio'].rolling(window=lookback).std()
     
@@ -79,11 +67,8 @@ def calculate_spread_and_zscore(df, lookback=60):
     
     return df
 
-# 🎯 Generate Trading Signals
+# Generate signal based on z score
 def generate_signals(df, entry_threshold=2.0, exit_threshold=0.5):
-    """
-    Generate long-short signals based on z-score
-    """
     print("🎯 Generating trading signals...")
     
     df['Signal'] = 0  # 0 = No position
@@ -114,16 +99,12 @@ def generate_signals(df, entry_threshold=2.0, exit_threshold=0.5):
     
     return df
 
-#  Visualize the Strategy
+#  plot the pairs trading
 def plot_pairs_trading(df, pair1_name, pair2_name):
-    """
-    Create visualization of the pairs trading strategy
-    """
     print("📈 Creating visualization...")
     
     fig, axes = plt.subplots(3, 1, figsize=(14, 10))
     
-    # Plot 1: Stock Prices
     axes[0].plot(df.index, df['Stock1'], label=pair1_name, linewidth=2)
     axes[0].plot(df.index, df['Stock2'], label=pair2_name, linewidth=2)
     axes[0].set_title(f'{pair1_name} vs {pair2_name} - Price Movement')
@@ -131,7 +112,6 @@ def plot_pairs_trading(df, pair1_name, pair2_name):
     axes[0].legend()
     axes[0].grid(True, alpha=0.3)
     
-    # Plot 2: Price Ratio and Z-Score
     ax2 = axes[1]
     ax2.plot(df.index, df['Price_Ratio'], label='Price Ratio', color='blue', linewidth=2)
     ax2.plot(df.index, df['Rolling_Mean'], label='Rolling Mean', color='orange', linestyle='--')
@@ -144,7 +124,6 @@ def plot_pairs_trading(df, pair1_name, pair2_name):
     ax2.legend()
     ax2.grid(True, alpha=0.3)
     
-    # Plot 3: Z-Score with Signals
     ax3 = axes[2]
     ax3.plot(df.index, df['Z_Score'], label='Z-Score', color='purple', linewidth=2)
     ax3.axhline(y=2.0, color='r', linestyle='--', alpha=0.7, label='Entry (+2)')
@@ -153,7 +132,6 @@ def plot_pairs_trading(df, pair1_name, pair2_name):
     ax3.axhline(y=-0.5, color='g', linestyle=':', alpha=0.7)
     ax3.fill_between(df.index, 2, -2, alpha=0.1, color='green')
     
-    # Mark signals
     long_signals = df[df['Signal'] == 1]
     short_signals = df[df['Signal'] == -1]
     ax3.scatter(long_signals.index, long_signals['Z_Score'], 
@@ -172,11 +150,7 @@ def plot_pairs_trading(df, pair1_name, pair2_name):
     print("✅ Chart saved as 'pairs_trading_chart.png'")
     plt.show()
 
-# 💰 Calculate Strategy Performance
 def calculate_performance(df):
-    """
-    Calculate basic performance metrics
-    """
     print("\n📊 Strategy Performance Analysis:")
     print("=" * 50)
     
@@ -205,10 +179,9 @@ def calculate_performance(df):
     print(f"Max Drawdown: {df_clean['Strategy_Return'].min():.2%}")
     print("=" * 50)
 
-#  Main Execution
 def run_pairs_trading_bot():
     print("=" * 60)
-    print("📊 PAIRS TRADING BOT (Statistical Arbitrage)")
+    print("PAIRS TRADING BOT (Statistical Arbitrage)")
     print("=" * 60)
     print(f"Pair: {PAIR_1} vs {PAIR_2}")
     print(f"Lookback Period: {LOOKBACK_PERIOD} days")
@@ -216,27 +189,22 @@ def run_pairs_trading_bot():
     print(f"Exit Z-Score: ±{Z_SCORE_EXIT}")
     print("=" * 60)
     
-    # Step 1: Fetch Data
     df = fetch_pair_data(PAIR_1, PAIR_2, period='6mo')
     
-    # Step 2: Calculate Correlation
     correlation = df['Stock1'].corr(df['Stock2'])
     print(f"\n📈 Correlation Coefficient: {correlation:.3f}")
     
     if correlation < 0.7:
-        print("⚠️  Warning: Correlation is below 0.7. Pairs may not be suitable for stat arb!")
+        print("️  Warning: Correlation is below 0.7. Pairs may not be suitable for stat arb!")
     else:
-        print("✅ Good! Stocks are highly correlated.")
+        print(" Good! Stocks are highly correlated.")
     
-    # Step 3: Calculate Spread and Z-Score
     df = calculate_spread_and_zscore(df, lookback=LOOKBACK_PERIOD)
     
-    # Step 4: Generate Signals
     df = generate_signals(df, entry_threshold=Z_SCORE_ENTRY, exit_threshold=Z_SCORE_EXIT)
     
-    # Step 5: Show Latest Status
     print("\n" + "=" * 60)
-    print("📍 CURRENT STATUS (Latest Data Point):")
+    print(" CURRENT STATUS (Latest Data Point):")
     print("=" * 60)
     latest = df.iloc[-1]
     print(f"Date: {latest.name.strftime('%Y-%m-%d')}")
@@ -256,14 +224,11 @@ def run_pairs_trading_bot():
     
     print("=" * 60)
     
-    # Step 6: Calculate Performance
     calculate_performance(df)
     
-    # Step 7: Plot Chart
     plot_pairs_trading(df, PAIR_1, PAIR_2)
     
-    print("\n✅ Pairs Trading Bot completed successfully!")
+    print("\n Pairs Trading Bot completed successfully!")
 
-# 🎯 Run the Bot
 if __name__ == "__main__":
     run_pairs_trading_bot()
